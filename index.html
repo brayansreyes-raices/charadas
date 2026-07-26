@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#150E2E">
+<title>Charadas</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #150E2E;
+    --bg-deep2: #241852;
+    --pink: #FF3D77;
+    --yellow: #FFC93C;
+    --teal: #00E5A0;
+    --red: #FF4757;
+    --purple: #9D4EDD;
+    --card: #1F1440;
+    --card-border: #372866;
+    --white: #FFFDF9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: 'Nunito', sans-serif;
+    background: radial-gradient(circle at 15% 10%, var(--bg-deep2) 0%, var(--bg-deep) 55%);
+    color: var(--white);
+    position: relative;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(circle, rgba(255,61,119,0.35) 1.5px, transparent 1.5px),
+      radial-gradient(circle, rgba(255,201,60,0.3) 1.5px, transparent 1.5px),
+      radial-gradient(circle, rgba(0,229,160,0.25) 1.5px, transparent 1.5px);
+    background-size: 60px 60px, 80px 80px, 100px 100px;
+    background-position: 0 0, 20px 30px, 40px 10px;
+    opacity: 0.5;
+  }
+  #app { height: 100vh; width: 100vw; position: relative; z-index: 1; }
+
+  .screen {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+  .screen.active { display: flex; }
+
+  h1.game-title {
+    font-family: 'Baloo 2', sans-serif; font-weight: 800;
+    font-size: 3em; margin-bottom: 6px;
+    letter-spacing: -0.02em;
+    animation: titlePop 0.5s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes titlePop {
+    0% { transform: scale(0.5) rotate(-8deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  .subtitle { opacity: 0.75; margin-bottom: 30px; font-size: 1.05em; font-weight: 600; }
+
+  /* SELECTOR DE IDIOMA */
+  .lang-row { display: flex; gap: 18px; }
+  .lang-btn {
+    background: var(--card); border: 3px solid var(--card-border);
+    border-radius: 20px; padding: 22px 30px; color: var(--white);
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 1.3em; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 0 var(--card-border);
+    transition: transform 0.1s, box-shadow 0.1s, border-color 0.15s;
+  }
+  .lang-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--card-border); }
+  .lang-btn:nth-child(1) { border-color: var(--pink); box-shadow: 0 6px 0 var(--pink); }
+  .lang-btn:nth-child(2) { border-color: var(--teal); box-shadow: 0 6px 0 var(--teal); }
+
+  .cat-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px; width: 100%; max-width: min(94vw, 1100px);
+    overflow-y: auto; max-height: 52vh; padding: 10px 14px;
+    scrollbar-width: thin; scrollbar-color: var(--pink) transparent;
+  }
+  .cat-grid::-webkit-scrollbar { width: 8px; }
+  .cat-grid::-webkit-scrollbar-track { background: transparent; }
+  .cat-grid::-webkit-scrollbar-thumb { background: var(--pink); border-radius: 10px; }
+  .cat-grid::-webkit-scrollbar-thumb:hover { background: var(--yellow); }
+  .cat-btn {
+    background: var(--card); border: 3px solid var(--card-border);
+    border-radius: 18px; padding: 16px 8px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.05em; font-weight: 800; color: var(--white); cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .cat-btn:nth-child(4n+1) { border-color: var(--pink); transform: rotate(-1.5deg); }
+  .cat-btn:nth-child(4n+2) { border-color: var(--yellow); transform: rotate(1deg); }
+  .cat-btn:nth-child(4n+3) { border-color: var(--purple); transform: rotate(-1deg); }
+  .cat-btn:nth-child(4n+4) { border-color: var(--teal); transform: rotate(1.5deg); }
+  .cat-btn.selected {
+    background: var(--card-border); transform: rotate(0) scale(1.05) translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+  }
+  .cat-btn.disabled { opacity: 0.3; }
+  .cat-count { display: block; font-size: 0.68em; opacity: 0.65; margin-top: 4px; font-weight: 700; }
+
+  .time-row { display: flex; gap: 12px; margin: 22px 0; }
+  .time-btn {
+    background: var(--card); border: 3px solid var(--card-border);
+    border-radius: 14px; padding: 10px 20px; color: var(--white);
+    font-family: 'Baloo 2', sans-serif; font-size: 1.1em; font-weight: 700;
+  }
+  .time-btn.selected { background: var(--yellow); border-color: var(--yellow); color: var(--bg-deep); }
+
+  .start-btn, .again-btn, .home-btn {
+    background: var(--pink); border: none; border-radius: 40px;
+    padding: 18px 54px; font-size: 1.3em; color: var(--white);
+    font-family: 'Baloo 2', sans-serif;
+    margin-top: 18px; cursor: pointer; font-weight: 700;
+    box-shadow: 0 6px 0 #B8235A;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .start-btn:active, .again-btn:active, .home-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #B8235A; }
+  .start-btn:disabled { background: #444; box-shadow: 0 6px 0 #2a2a2a; opacity: 0.5; }
+  .change-lang-link { margin-top: 16px; opacity: 0.65; font-size: 0.9em; text-decoration: underline; cursor: pointer; font-weight: 700; }
+
+  /* GAME SCREEN */
+  #game-screen { padding: 0; transition: background 0.15s; }
+  .top-bar {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 22px; z-index: 5;
+  }
+  .score-chip {
+    font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 1.15em;
+    background: rgba(255,255,255,0.08); border-radius: 20px; padding: 8px 16px;
+  }
+  #timer-wrap { position: relative; width: 62px; height: 62px; }
+  #timer-svg { transform: rotate(-90deg); }
+  #timer-svg circle { fill: none; stroke-width: 6; }
+  #timer-bg-circle { stroke: rgba(255,255,255,0.12); }
+  #timer-fg-circle { stroke: var(--teal); stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 0.3s; }
+  #timer {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 1.15em;
+  }
+  #timer.urgent { animation: pulse 0.5s infinite; color: var(--red); }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+  #word-display {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 3.2em; font-weight: 800;
+    padding: 0 20px; word-break: break-word;
+    transition: opacity 0.15s;
+  }
+  #word-display.hide-word { opacity: 0; }
+
+  .flash-correct { background: radial-gradient(circle, #17c98a 0%, #0d8f61 100%) !important; }
+  .flash-skip { background: radial-gradient(circle, #ff5c6c 0%, #c62839 100%) !important; }
+
+  #stamp {
+    position: absolute; top: 50%; left: 50%;
+    font-family: 'Baloo 2', sans-serif; font-weight: 800;
+    font-size: 3.5em; color: white; pointer-events: none;
+    opacity: 0; z-index: 10;
+    text-shadow: 0 4px 0 rgba(0,0,0,0.25);
+  }
+  #stamp.show-stamp {
+    animation: stampIn 0.4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes stampIn {
+    0% { transform: translate(-50%,-50%) scale(0.3) rotate(-15deg); opacity: 0; }
+    60% { transform: translate(-50%,-50%) scale(1.15) rotate(4deg); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(1) rotate(-4deg); opacity: 1; }
+  }
+
+  .instructions {
+    position: absolute; bottom: 30px; left: 0; right: 0;
+    text-align: center; font-size: 0.9em; opacity: 0.55; font-weight: 700;
+    padding: 0 30px;
+  }
+
+  /* RESULTS */
+  .results-list {
+    width: 100%; max-width: 400px; max-height: 36vh;
+    overflow-y: auto; margin: 18px 0; text-align: left;
+  }
+  .result-item {
+    display: flex; justify-content: space-between;
+    padding: 10px 16px; border-radius: 12px; margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .result-item.ok { background: rgba(0,229,160,0.15); }
+  .result-item.skip { background: rgba(255,71,87,0.15); }
+  .big-score {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 4.2em; font-weight: 800; color: var(--yellow);
+    text-shadow: 0 4px 0 rgba(0,0,0,0.25);
+  }
+
+  #confetti-burst { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .confetti-piece {
+    position: absolute; top: -20px; width: 10px; height: 16px; opacity: 0.9;
+    animation: confettiFall 2.6s linear forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+  }
+
+  #permission-btn {
+    background: var(--card); border: 3px solid var(--pink); border-radius: 24px;
+    padding: 14px 30px; color: white; margin-bottom: 20px; font-weight: 700;
+    font-family: 'Baloo 2', sans-serif;
+  }
+  .hidden { display: none !important; }
+  #loading-screen { font-size: 1.2em; opacity: 0.7; font-weight: 700; }
+  .mask-emoji { display: inline-block; animation: sway 2.4s ease-in-out infinite; }
+  @keyframes sway { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+
+  /* AVISO DE ROTACION */
+  #rotate-overlay {
+    position: fixed; inset: 0; z-index: 999;
+    background: var(--bg-deep);
+    display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 30px;
+  }
+  #rotate-overlay.active { display: flex; }
+  #rotate-overlay .rotate-icon { font-size: 4em; animation: rotateHint 1.6s ease-in-out infinite; margin-bottom: 20px; }
+  @keyframes rotateHint {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+  }
+  #rotate-overlay h2 { font-family: 'Baloo 2', sans-serif; font-size: 1.6em; margin-bottom: 8px; }
+  #rotate-overlay p { opacity: 0.75; font-weight: 600; }
+
+  /* AVISO DE SENSOR NO DISPONIBLE */
+  #sensor-hint {
+    position: absolute; top: 92px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,201,60,0.15); border: 2px solid var(--yellow);
+    color: var(--yellow); font-weight: 800; font-size: 0.9em;
+    padding: 10px 18px; border-radius: 20px; z-index: 6;
+    display: none; text-align: center; max-width: 85%;
+  }
+  #sensor-hint.show-hint { display: block; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- CARGANDO -->
+  <div class="screen active" id="loading-screen">
+    <div class="subtitle">Cargando…</div>
+  </div>
+
+  <!-- IDIOMA -->
+  <div class="screen" id="lang-screen">
+    <h1 class="game-title"><span class="mask-emoji">🎭</span> Charadas</h1>
+    <div class="subtitle">Elige el idioma / Choose language</div>
+    <div class="lang-row">
+      <div class="lang-btn" data-lang="es">🇪🇸 Español</div>
+      <div class="lang-btn" data-lang="en">🇬🇧 English</div>
+    </div>
+  </div>
+
+  <!-- HOME / SELECCION -->
+  <div class="screen" id="home-screen">
+    <h1 class="game-title" id="home-title">🎭 Charadas</h1>
+    <div class="subtitle" id="home-subtitle">Elige categorías y tiempo</div>
+    <div class="cat-grid" id="cat-grid"></div>
+
+    <div class="time-row">
+      <button class="time-btn" data-time="30">30s</button>
+      <button class="time-btn selected" data-time="60">60s</button>
+      <button class="time-btn" data-time="90">90s</button>
+    </div>
+
+    <button class="start-btn" id="start-btn" disabled>Comenzar</button>
+    <div class="change-lang-link" id="change-lang-link">Cambiar idioma</div>
+  </div>
+
+  <!-- PERMISO / GET READY -->
+  <div class="screen" id="ready-screen">
+    <h1 class="game-title">📱 Ponlo en tu frente</h1>
+    <div class="subtitle">Sube el celular para acertar<br>Baja el celular para pasar</div>
+    <button id="permission-btn" class="hidden">Activar sensores</button>
+    <button class="start-btn" id="go-btn">¡Listo!</button>
+  </div>
+
+  <!-- JUEGO -->
+  <div class="screen" id="game-screen">
+    <div class="top-bar">
+      <div class="score-chip" id="score">✅ 0 &nbsp; ❌ 0</div>
+      <div id="timer-wrap">
+        <svg id="timer-svg" width="62" height="62">
+          <circle id="timer-bg-circle" cx="31" cy="31" r="26"></circle>
+          <circle id="timer-fg-circle" cx="31" cy="31" r="26"></circle>
+        </svg>
+        <div id="timer">60</div>
+      </div>
+    </div>
+    <div id="word-display">Palabra</div>
+    <div id="sensor-hint"></div>
+    <div id="stamp"></div>
+    <div class="instructions">⬆️ Arriba = acierto &nbsp; ⬇️ Abajo = pasar</div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div class="screen" id="results-screen">
+    <div id="confetti-burst"></div>
+    <div class="subtitle">Puntaje final</div>
+    <div class="big-score" id="final-score">0</div>
+    <div class="results-list" id="results-list"></div>
+    <button class="again-btn" id="again-btn">Jugar de nuevo</button>
+    <button class="home-btn" id="home-btn">Menú</button>
+  </div>
+
+</div>
+
+<!-- AVISO DE ROTACION (fuera de #app para cubrir cualquier pantalla) -->
+<div id="rotate-overlay">
+  <div class="rotate-icon">🔄</div>
+  <h2 id="rotate-title">Gira tu celular</h2>
+  <p id="rotate-subtitle">Este juego se juega en horizontal</p>
+</div>
+
+<script>
+/* ===================== ESTADO GLOBAL ===================== */
+let WORDS = {};
+let currentLang = 'es';
+let selectedCats = new Set();
+let selectedTime = 60;
+let gameWords = [];
+let currentWordIndex = 0;
+let score = 0;
+let results = [];
+let timeLeft = 60;
+let timerInterval = null;
+let lastTiltState = "neutral";
+let tiltCooldown = false;
+
+const $ = id => document.getElementById(id);
+const screens = {
+  loading: $('loading-screen'), lang: $('lang-screen'), home: $('home-screen'),
+  ready: $('ready-screen'), game: $('game-screen'), results: $('results-screen')
+};
+
+function showScreen(name){
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+}
+
+const UI_TEXT = {
+  es: {
+    homeTitle: '🎭 Charadas', homeSubtitle: 'Elige categorías y tiempo',
+    start: 'Comenzar', changeLang: 'Cambiar idioma',
+    pending: 'pendiente', words: 'palabras', correctStamp: '¡SÍ!', skipStamp: 'PASO',
+    rotateTitle: 'Gira tu celular', rotateSubtitle: 'Este juego se juega en horizontal',
+    sensorHint: '📱 No detectamos movimiento — toca la mitad de arriba (acierto) o abajo (pasar) para jugar'
+  },
+  en: {
+    homeTitle: '🎭 Charades', homeSubtitle: 'Choose categories and time',
+    start: 'Start', changeLang: 'Change language',
+    pending: 'pending', words: 'words', correctStamp: 'YES!', skipStamp: 'SKIP',
+    rotateTitle: 'Rotate your phone', rotateSubtitle: 'This game is played in landscape',
+    sensorHint: '📱 No motion detected — tap the top half (correct) or bottom half (skip) to play'
+  }
+};
+
+/* ===================== AVISO DE ROTACION (portrait/landscape) ===================== */
+function checkOrientation(){
+  const isPortrait = window.innerHeight > window.innerWidth;
+  const overlay = $('rotate-overlay');
+  if (isPortrait) {
+    $('rotate-title').textContent = UI_TEXT[currentLang].rotateTitle;
+    $('rotate-subtitle').textContent = UI_TEXT[currentLang].rotateSubtitle;
+    overlay.classList.add('active');
+  } else {
+    overlay.classList.remove('active');
+  }
+}
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', checkOrientation);
+checkOrientation();
+
+/* ===================== AVISO DE SENSOR SIN RESPUESTA ===================== */
+let sensorReceived = false;
+let sensorCheckTimeout = null;
+
+function armSensorCheck(){
+  sensorReceived = false;
+  $('sensor-hint').classList.remove('show-hint');
+  clearTimeout(sensorCheckTimeout);
+  sensorCheckTimeout = setTimeout(() => {
+    if (!sensorReceived) {
+      $('sensor-hint').textContent = UI_TEXT[currentLang].sensorHint;
+      $('sensor-hint').classList.add('show-hint');
+    }
+  }, 2000);
+}
+
+
+fetch('words.json')
+  .then(r => r.json())
+  .then(data => {
+    WORDS = data;
+    showScreen('lang');
+  })
+  .catch(err => {
+    $('loading-screen').innerHTML = '<div class="subtitle">Error cargando words.json. Verifica que el archivo esté en la misma carpeta que index.html.</div>';
+    console.error(err);
+  });
+
+/* ===================== SELECCION DE IDIOMA ===================== */
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.onclick = () => {
+    currentLang = btn.dataset.lang;
+    buildHomeScreen();
+    showScreen('home');
+  };
+});
+
+$('change-lang-link').onclick = () => showScreen('lang');
+
+/* ===================== HOME: construir categorías (dinámico) ===================== */
+function buildHomeScreen(){
+  const t = UI_TEXT[currentLang];
+  $('home-title').innerHTML = t.homeTitle;
+  $('home-subtitle').textContent = t.homeSubtitle;
+  $('start-btn').textContent = t.start;
+  $('change-lang-link').textContent = t.changeLang;
+
+  const catGrid = $('cat-grid');
+  catGrid.innerHTML = '';
+  selectedCats.clear();
+  $('start-btn').disabled = true;
+
+  Object.entries(WORDS).forEach(([id, cat]) => {
+    const name = currentLang === 'es' ? cat.name_es : cat.name_en;
+    const wordCount = (cat[currentLang] || []).length;
+    const isEmpty = wordCount === 0;
+
+    const btn = document.createElement('div');
+    btn.className = 'cat-btn' + (isEmpty ? ' disabled' : '');
+    btn.innerHTML = `${name}<span class="cat-count">${isEmpty ? UI_TEXT[currentLang].pending : wordCount + ' ' + UI_TEXT[currentLang].words}</span>`;
+
+    if (!isEmpty) {
+      btn.onclick = () => {
+        if (selectedCats.has(id)) { selectedCats.delete(id); btn.classList.remove('selected'); }
+        else { selectedCats.add(id); btn.classList.add('selected'); }
+        $('start-btn').disabled = selectedCats.size === 0;
+      };
+    }
+    catGrid.appendChild(btn);
+  });
+}
+
+document.querySelectorAll('.time-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedTime = parseInt(btn.dataset.time);
+  };
+});
+
+/* ===================== FLUJO ===================== */
+$('start-btn').onclick = () => {
+  gameWords = [];
+  selectedCats.forEach(catId => gameWords.push(...(WORDS[catId][currentLang] || [])));
+  gameWords = gameWords.sort(() => Math.random() - 0.5);
+  timeLeft = selectedTime;
+
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    $('permission-btn').classList.remove('hidden');
+  } else {
+    $('permission-btn').classList.add('hidden');
+  }
+  showScreen('ready');
+};
+
+$('permission-btn').onclick = async () => {
+  try {
+    const res = await DeviceOrientationEvent.requestPermission();
+    if (res === 'granted') $('permission-btn').classList.add('hidden');
+  } catch(e) { console.log(e); }
+};
+
+$('go-btn').onclick = () => startGame();
+$('again-btn').onclick = () => { showScreen('home'); buildHomeScreen(); };
+$('home-btn').onclick = () => { showScreen('home'); buildHomeScreen(); };
+
+/* ===================== TIMER RING ===================== */
+const TIMER_RADIUS = 26;
+const TIMER_CIRC = 2 * Math.PI * TIMER_RADIUS;
+$('timer-fg-circle').style.strokeDasharray = TIMER_CIRC;
+
+function updateTimerRing(){
+  const ratio = Math.max(timeLeft / selectedTime, 0);
+  const offset = TIMER_CIRC * (1 - ratio);
+  $('timer-fg-circle').style.strokeDashoffset = offset;
+  const fg = $('timer-fg-circle');
+  const timerEl = $('timer');
+  if (timeLeft <= 10) {
+    fg.style.stroke = 'var(--red)';
+    timerEl.classList.add('urgent');
+  } else {
+    fg.style.stroke = 'var(--teal)';
+    timerEl.classList.remove('urgent');
+  }
+}
+
+function startGame(){
+  currentWordIndex = 0;
+  score = 0;
+  results = [];
+  timeLeft = selectedTime;
+  showScreen('game');
+  showWord();
+  updateHUD();
+  updateTimerRing();
+  window.addEventListener('deviceorientation', handleOrientation);
+  armSensorCheck();
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    $('timer').textContent = timeLeft;
+    updateTimerRing();
+    if (timeLeft <= 0) endGame();
+  }, 1000);
+}
+
+function spawnConfetti(){
+  const colors = ['#FF3D77','#FFC93C','#9D4EDD','#00E5A0'];
+  const container = $('confetti-burst');
+  container.innerHTML = '';
+  for (let i = 0; i < 40; i++){
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * 0.6) + 's';
+    piece.style.transform = `rotate(${Math.random()*360}deg)`;
+    container.appendChild(piece);
+  }
+}
+
+function endGame(){
+  clearInterval(timerInterval);
+  clearTimeout(sensorCheckTimeout);
+  window.removeEventListener('deviceorientation', handleOrientation);
+  $('final-score').textContent = score;
+  const list = $('results-list');
+  list.innerHTML = '';
+  results.forEach(r => {
+    const div = document.createElement('div');
+    div.className = `result-item ${r.correct ? 'ok' : 'skip'}`;
+    div.innerHTML = `<span>${r.word}</span><span>${r.correct ? '✅' : '❌'}</span>`;
+    list.appendChild(div);
+  });
+  showScreen('results');
+  spawnConfetti();
+}
+
+function showWord(){
+  if (gameWords.length === 0) { $('word-display').textContent = '—'; return; }
+  if (currentWordIndex >= gameWords.length) currentWordIndex = 0;
+  $('word-display').textContent = gameWords[currentWordIndex];
+}
+
+function updateHUD(){
+  const correct = results.filter(r => r.correct).length;
+  const skipped = results.filter(r => !r.correct).length;
+  $('score').textContent = `✅ ${correct}  ❌ ${skipped}`;
+}
+
+function registerAnswer(correct){
+  if (tiltCooldown || gameWords.length === 0) return;
+  tiltCooldown = true;
+
+  const word = gameWords[currentWordIndex];
+  results.push({ word, correct });
+  if (correct) score++;
+
+  const gs = $('game-screen');
+  const stamp = $('stamp');
+  const wordEl = $('word-display');
+  const t = UI_TEXT[currentLang];
+  gs.classList.add(correct ? 'flash-correct' : 'flash-skip');
+  stamp.textContent = correct ? t.correctStamp : t.skipStamp;
+  stamp.classList.add('show-stamp');
+  wordEl.classList.add('hide-word');
+  if (navigator.vibrate) navigator.vibrate(correct ? 60 : [40,40,40]);
+
+  setTimeout(() => {
+    gs.classList.remove('flash-correct','flash-skip');
+    stamp.classList.remove('show-stamp');
+    wordEl.classList.remove('hide-word');
+    currentWordIndex++;
+    showWord();
+    updateHUD();
+    tiltCooldown = false;
+  }, 420);
+}
+
+/* ===================== SENSOR DE INCLINACIÓN ===================== */
+function handleOrientation(e){
+  let beta = e.beta;
+  let gamma = e.gamma;
+
+  if (beta !== null || gamma !== null) {
+    if (!sensorReceived) {
+      sensorReceived = true;
+      $('sensor-hint').classList.remove('show-hint');
+    }
+  }
+
+  let tiltValue = Math.abs(window.orientation) === 90 ? gamma : beta;
+  if (window.orientation === 90) tiltValue = -gamma;
+
+  const UP_THRESHOLD = 35;
+  const DOWN_THRESHOLD = -35;
+
+  if (tiltValue !== null) {
+    if (tiltValue > UP_THRESHOLD && lastTiltState !== 'up') {
+      lastTiltState = 'up';
+      registerAnswer(true);
+    } else if (tiltValue < DOWN_THRESHOLD && lastTiltState !== 'down') {
+      lastTiltState = 'down';
+      registerAnswer(false);
+    } else if (Math.abs(tiltValue) < 15) {
+      lastTiltState = 'neutral';
+    }
+  }
+}
+
+/* Fallback: tap en pantalla para probar sin sensor */
+$('game-screen').addEventListener('click', (e) => {
+  const rect = $('game-screen').getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  registerAnswer(y < rect.height / 2);
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

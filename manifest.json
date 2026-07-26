@@ -1,0 +1,16 @@
+{
+  "name": "Charadas",
+  "short_name": "Charadas",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#150E2E",
+  "theme_color": "#150E2E",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
