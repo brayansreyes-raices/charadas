@@ -92,12 +92,13 @@
   .home-left .start-btn { margin-top: 8px; padding: 14px 30px; font-size: 1.05em; }
   .home-left .change-lang-link { margin-top: 12px; }
   .home-right {
-    flex: 1; min-width: 0; max-width: 900px;
-    height: 92vh; display: flex; align-items: center;
+    flex: 1; min-width: 0; min-height: 0; max-width: 900px;
+    align-self: stretch; display: flex; align-items: center;
   }
   .cat-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 14px; width: 100%; max-height: 90vh;
+    gap: 14px; width: 100%; height: 100%; max-height: 100%;
+    align-content: center;
     overflow-y: auto; padding: 10px 14px;
     scrollbar-width: thin; scrollbar-color: var(--pink) transparent;
   }
@@ -122,6 +123,33 @@
   }
   .cat-btn.disabled { opacity: 0.3; }
   .cat-count { display: block; font-size: 0.68em; opacity: 0.65; margin-top: 4px; font-weight: 700; }
+
+  /* MOBILE / PANTALLAS BAJAS EN HORIZONTAL: el celular solo puede jugarse
+     en horizontal, y en ese caso la altura suele ser muy limitada, asi que
+     achicamos todo para que la grilla de categorias no se corte ni se
+     desborde. */
+  @media (max-height: 480px), (max-width: 820px) {
+    #home-screen.active { gap: 14px; padding: 10px 16px; }
+    .home-left { flex: 0 0 170px; }
+    .home-left .game-title { font-size: 1.25em; margin-bottom: 0; }
+    .home-left .subtitle { font-size: 0.7em; margin-bottom: 8px; }
+    .home-left .time-row { margin: 6px 0; gap: 6px; }
+    .time-btn { padding: 7px 12px; font-size: 0.85em; border-width: 2px; }
+    .home-left .start-btn { padding: 9px 20px; font-size: 0.9em; margin-top: 6px; border-width: 0; }
+    .home-left .change-lang-link { margin-top: 6px; font-size: 0.75em; }
+    .cat-grid { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 8px; padding: 4px 6px; }
+    .cat-btn {
+      padding: 8px 6px; font-size: 0.8em; border-width: 2px; min-height: 52px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .cat-count { font-size: 0.6em; margin-top: 2px; }
+  }
+
+  @media (max-height: 340px) {
+    .home-left .game-title { font-size: 1.05em; }
+    .home-left .subtitle { display: none; }
+    .cat-btn { min-height: 42px; padding: 6px 4px; }
+  }
 
   .time-row { display: flex; gap: 12px; margin: 22px 0; }
   .time-btn {
@@ -640,17 +668,43 @@ function registerAnswer(correct){
    el juego toma como punto de partida ("recto") la posición exacta en la
    que está el celular apenas empieza la ronda, y mide los grados de
    diferencia desde ahí: +45° hacia arriba = acierto, -45° hacia abajo = pasar.
-*/ 
+*/
+function isLandscapeNow(){
+  return window.innerWidth > window.innerHeight;
+}
+
+// window.orientation esta obsoleto y en muchos navegadores modernos
+// (sobre todo Android) ya no responde, dejando `screen.orientation.angle`
+// como unica fuente confiable del angulo real de la pantalla.
+function getScreenAngle(){
+  if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle;
+  if (typeof window.orientation === 'number') return window.orientation;
+  return 90;
+}
+
 function getRawTilt(e){
-  let beta = e.beta;
-  let gamma = e.gamma;
+  const beta = e.beta;
+  const gamma = e.gamma;
   if (beta === null && gamma === null) return null;
-  let val = Math.abs(window.orientation) === 90 ? gamma : beta;
-  if (window.orientation === 90) val = -gamma;
-  return val;
+  // En horizontal el eje que capta el cabeceo (arriba/abajo) es "gamma";
+  // usar "beta" ahi (como pasaba al confiar en window.orientation, que da
+  // undefined en varios celulares) provoca saltos por bloqueo de gimbal:
+  // eso era lo que hacia que cualquier micro-movimiento cambiara la palabra.
+  const angle = getScreenAngle();
+  if (angle === 90 || angle === -270) return -gamma;
+  if (angle === -90 || angle === 270) return gamma;
+  return beta;
 }
 
 function handleOrientation(e){
+  if (!isLandscapeNow()) {
+    // El juego solo se juega en horizontal (el aviso de rotacion bloquea
+    // el resto). Si por un instante deja de estarlo, se recalibra al volver.
+    baselineAngle = null;
+    calibrationSamples = [];
+    return;
+  }
+
   if (!sensorReceived) {
     sensorReceived = true;
     $('sensor-hint').classList.remove('show-hint');
